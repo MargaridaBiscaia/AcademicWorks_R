@@ -1,0 +1,19 @@
+# Apólice 1
+f <- function(x, theta, alpha) {
+  return(exp(x/1000) * (theta^alpha) * exp(-theta/x) / (gamma(alpha) * x^(alpha + 1)))
+}
+
+theta <- 12.36647
+alpha <- 16.41887
+
+integrate(f, lower = 0, upper = Inf, theta = theta, alpha = alpha)
+
+# Apólice 2
+f <- function(x, theta, alpha) {
+  return(exp(x/1000) * (x^(alpha-1)) / (theta^alpha * gamma(alpha)) * exp(-x/theta))
+}
+
+theta <- 8.086131
+alpha <- 24.686715 
+
+integrate(f, lower = 0, upper = Inf, theta = theta, alpha = alpha)

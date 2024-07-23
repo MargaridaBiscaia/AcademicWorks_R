@@ -1,0 +1,81 @@
+# Apólice 1
+
+# função de distribuição empírica 
+plot.ecdf(x1, main="Função de distribuição empírica de X1")
+
+# distribuição de classe (a,b,0)
+sort(unique(x1))
+
+n<-array(dim=length(unique(x1))) 
+for(i in 1:length(n)){
+  n[i]<-sum(x1==sort(unique(x1))[i])
+}
+
+valores<-array(dim=length(unique(x1))-1)
+for(i in 2:length(n))
+  valores[i]<-(i-1)*n[i]/n[i-1]  # valores = k*n_k/n_{k-1}
+
+plot(sort(unique(x1)),valores)
+
+library(VGAM)
+# Zero-inflated Poisson
+lambda<-mean(x1)+var(x1)/mean(x1)-1
+phi<-(lambda-mean(x1))/lambda
+
+plot.ecdf(x1, main="Função de distribuição empírica de X1")
+lines(seq(0,9,0.01), pzipois(seq(0,9,0.01), lambda, phi), col="blue", lwd=2)
+
+library(ADGofTest)
+ad.test(x1,pzipois, lambda, phi)
+
+# Apólice 2
+
+# função de distribuição empírica 
+plot.ecdf(x2, main="Função de distribuição empírica de X2")
+
+# distribuição de classe (a,b,0)
+sort(unique(x2))
+
+n<-array(dim=length(unique(x2))) 
+for(i in 1:length(n))
+  n[i]<-sum(x2==sort(unique(x2))[i])
+
+valores<-array(dim=length(unique(x2))-1)
+for(i in 2:length(n))
+  valores[i]<-(i-1)*n[i]/n[i-1]  # valores = k*n_k/n_{k-1}
+
+plot(sort(unique(x2)),valores)
+
+# Zero-inflated Poisson
+lambda<-mean(x2)+var(x2)/mean(x2)-1
+phi<-(lambda-mean(x2))/lambda
+
+plot.ecdf(x2, main="Função de distribuição empírica de X2")
+lines(seq(0,10,0.01), pzipois(seq(0,10,0.01), lambda, phi), col="green", lwd=2)
+
+library(ADGofTest)
+ad.test(x2,pzipois, lambda, phi)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

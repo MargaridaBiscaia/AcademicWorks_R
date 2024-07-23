@@ -1,0 +1,9 @@
+f <- function(x, theta, alpha) {
+  return((x-10)*(theta^alpha) * exp(-theta/x) / (gamma(alpha) * x^(alpha + 1)))
+}
+
+theta <- 12.36647
+alpha <- 16.41887
+
+integrate(f, lower = 10, upper = Inf, theta = theta, alpha = alpha)
+

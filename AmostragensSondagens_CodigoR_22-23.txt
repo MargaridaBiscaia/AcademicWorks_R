@@ -1,0 +1,170 @@
+# funções necessárias
+
+# função para definir os estimadores
+# -> est = [estimador SSR, estimador da regressão, estimador do quociente]
+estimador=function(n,s,y,x){
+  est<-array(dim=c(1,3))
+
+  s_yx = 1/(n-1)*sum((y*s-mean(y[s==1]))*(x*s-mean(x[s==1]))) 
+  s_x2 = 1/(n-1)*sum((x*s-mean(x[s==1]))^2)
+  a = s_yx/s_x2
+
+  est[1]<-mean(y[s==1]) # estimador SSR
+  est[2]<-mean(y[s==1])-a*(mean(x[s==1])-mean(x)) # estimador da regressão
+  est[3]<-mean(y[s==1])*(mean(x)/mean(x[s==1])) # estimador do quociente
+  	
+  return(est)
+}
+
+# função para definir a variância de cada estimador
+# -> var = [variância SSR, variância da regressão, variância do quociente]
+variancia=function(n,s,y,x){
+  var=array(dim=c(1,3))
+
+  s_yx=1/(n-1)*sum((y*s-mean(y[s==1]))*(x*s-mean(x[s==1])))
+  s_x2=1/(n-1)*sum((x*s-mean(x[s==1]))^2)
+  s_y2=1/(n-1)*sum((y*s-mean(y[s==1]))^2)
+  r=mean(y[s==1])/mean(x[s==1])
+
+  var[1]=(1-n/N)*(s_y2/n)  # variância do estimador SSR
+  var[2]=(1-n/N)*(s_y2/n)*(1-s_yx^2/(s_y2*s_x2)) # variância aproximada do estimador da regressão 
+  var[3]=(1-n/N)*(s_y2/n)*(1-(2*r*s_yx-s_x2*r^2)/s_y2) # variância aproximada do estimador do quociente
+  
+  return(var)
+}
+
+# função para determinar o intervalo de confiança de cada estimador
+# -> IC [1,limite inferior do IC] [IC SSR, IC da regressão, IC do quociente]
+#       [2,limite superior do IC] [IC SSR, IC da regressão, IC do quociente]
+intconf=function(z,est,var){
+  IC=array(dim=c(2,3))
+
+  for(i in 1:3){
+    IC[1,i]=est[i]-z*sqrt(var[i])
+    IC[2,i]=est[i]+z*sqrt(var[i])
+  }
+
+  return(IC)
+}
+####################################################################################
+# população da Bélgica
+library(sampling)
+data(belgianmunicipalities)
+
+y=belgianmunicipalities$TaxableIncome  # variável de interesse
+x=belgianmunicipalities$Tot03 # variável auxiliar
+
+n = 100
+M = 1000 # número de repetições
+N = length(y)
+
+# população da Suíça
+library(sampling)
+data(swissmunicipalities)
+
+y=swissmunicipalities$H00PTOT # variável de interesse
+x=swissmunicipalities$POPTOT # variável auxiliar
+
+M = 2000 # número de repetições
+n = 800
+N = length(y)
+
+####################################################################################
+# código para obter os resultados
+
+esty<-array(dim=c(M,3))
+vary<-array(dim=c(M,3))
+IC90<-array(dim=c(c(2,3),M))
+IC95<-array(dim=c(c(2,3),M))
+IC99<-array(dim=c(c(2,3),M))
+merro<-array(dim=c(c(3,3),M))
+vies<-c(0,0,0)
+EQM<-c(0,0,0)
+contador90<-c(0,0,0)
+contador95<-c(0,0,0)
+contador99<-c(0,0,0)
+
+# estimadores, variâncias e intervalos de confiança (com graus de confiança 90%, 95% e 99%)
+for(i in 1:M){
+  s<-srswor(n,N) 
+
+  esty[i,]<-estimador(n,s,y,x)
+  colnames(esty) = c("SSR","regressão","quociente")
+  vary[i,]<-variancia(n,s,y,x) 
+  colnames(vary) = c("SSR","regressão","quociente")
+  IC90[,,i]<-intconf(z=1.645,esty[i,],vary[i,]) # 90% de certeza
+  colnames(IC90) = c("SSR","regressão","quociente")
+  IC95[,,i]<-intconf(z=1.96,esty[i,],vary[i,]) # 95% de certeza
+  colnames(IC95) = c("SSR","regressão","quociente")
+  IC99[,,i]<-intconf(z=2.576,esty[i,],vary[i,]) # 99% de certeza
+  colnames(IC99) = c("SSR","regressão","quociente")
+  
+  # definir a probabilidade de cobertura
+  for(j in 1:3){
+    if(mean(y) > IC90[1,j,i] & mean(y) < IC90[2,j,i]){contador90[j]=contador90[j]+1} 
+    if(mean(y) > IC95[1,j,i] & mean(y) < IC95[2,j,i]){contador95[j]=contador95[j]+1} 
+    if(mean(y) > IC99[1,j,i] & mean(y) < IC99[2,j,i]){contador99[j]=contador99[j]+1} 
+   }
+   
+   # definir a margem de erro
+   merro[1,,i] = (IC90[2,,i]-IC90[1,,i])/2
+   merro[2,,i] = (IC95[2,,i]-IC95[1,,i])/2
+   merro[3,,i] = (IC99[2,,i]-IC99[1,,i])/2
+   colnames(merro) = c("SSR","regressão","quociente")
+   rownames(merro) = c("90%","95%","99%")
+}
+
+# probabilidades de cobertura para cada grau de confiança
+probcobertura90<-array(dim=c(1,3))
+probcobertura95<-array(dim=c(1,3))
+probcobertura99<-array(dim=c(1,3))
+for(j in 1:3){
+  probcobertura90[j]<-contador90[j]/M
+  probcobertura95[j]<-contador95[j]/M
+  probcobertura99[j]<-contador99[j]/M
+}
+probcobertura90
+probcobertura95
+probcobertura99
+
+# variância empírica das M amostras
+diag(var(esty))
+
+# viés das M amostras
+for(j in 1:3){
+    vies[j]<-mean(esty[,j])-mean(y)
+}
+
+# EQM das M amostras
+for(j in 1:3){
+    EQM[j]<-diag(var(esty))[j] + (vies[j])^2
+}
+
+# boxplot dos três estimadores
+boxplot(esty, main="Distribuição dos estimadores da média de y")
+abline(h=mean(y),lwd=3,col="red")
+points(x=c(1,2,3), y=colMeans(esty), pch=19,col="blue",cex=1.4)
+
+# boxplot dos estimadores da regressão e do quociente
+est<-array(dim=c(M,2))
+est[,1]<-esty[,2]
+est[,2]<-esty[,3]
+colnames(est) = c("regressão","quociente")
+boxplot(est, main="Distribuição dos estimadores da média de y")
+abline(h=mean(y),lwd=2,col="red")
+points(x=c(1,2), y=colMeans(est), pch=19,col="blue",cex=1.4)
+
+# qq-plots
+qqnorm((esty[,1]-mean(y))/sd(esty[,1]), main="Estimador SSR")
+qqline((esty[,1]-mean(y))/sd(esty[,1]), lwd=2, col="red")
+  
+qqnorm((esty[,2]-mean(y))/sd(esty[,2]), main="Estimador da regressão")
+qqline((esty[,2]-mean(y))/sd(esty[,2]), lwd=2, col="red")
+  
+qqnorm((esty[,3]-mean(y))/sd(esty[,3]), main="Estimador do quociente")
+qqline((esty[,3]-mean(y))/sd(esty[,3]), lwd=2, col="red")
+
+
+
+
+

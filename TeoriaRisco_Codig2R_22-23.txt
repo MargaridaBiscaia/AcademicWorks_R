@@ -1,0 +1,157 @@
+library(stats4)
+
+# funções para o método da máxima verosimilhança
+# rough location of max
+look.for.max<-function(x1,x2,y1,y2,ff){
+  aa<-seq(x1,x2,(x2-x1)/50); n1<-length(aa)
+  bb<-seq(y1,y2,(y2-y1)/50); n2<-length(bb)
+  z<-array(as.numeric(NA),c(n1,n2))
+  for (i in 1:n1){for (j in 1:n2){z[i,j]<- ff(aa[i],bb[j])}}
+  #persp(aa,bb,z,theta=0,phi=15)
+  contour(aa,bb,z)
+}
+
+# distribuição Gamma
+gamma.emv<-function(x,samp) c(sum(log(samp))-length(samp)*log(x[2])-length(samp)*digamma(x[1]),-length(samp)*x[1]+sum(samp)/x[2])
+gamma.emv4<-function(a,b) -(-length(samp)*a*log(b)-length(samp)*log(gamma(a))+(a-1)*sum(log(samp))-sum(samp)/b)
+gamma.emv41<-function(a,b) -sum(log(dgamma(samp,sh=a,sc=b)))
+
+# distribuição Weibull 
+weibull.emv<-function(x,samp){
+ n<-length(samp)
+ c(n/x[1]+sum(log(samp))-n*log(x[2])-sum(((samp/x[2])^x[1])*log(samp/x[2])),n*x[1]/x[2]+x[1]*sum((samp/x[2])^x[1])/x[2])
+}
+weibull.emv4<-function(a,b){
+  n<-length(samp)
+  -(n*log(a)-n*a*log(b)+(a-1)*sum(log(samp))-sum(samp^a)/b^a)
+}
+weibull.emv41<-function(a,b) -sum(log(dweibull(samp,sh=a,sc=b)))
+
+# distribuição Weibull inversa
+library(actuar)
+invweibull.emv<-function(x,samp){
+  n<-length(samp)
+  c(n/x[1]+n*log(x[2])-sum(log(x[2]/samp)(x[2]/samp)^x[1])-sum(log(samp)),n*x[1]/x[2]-x[1]*sum((x[2]/samp)^x[1])/x[2])
+}
+invweibull.emv4<-function(a,b){
+  n<-length(samp)
+  -(n*log(a)+n*a*log(b)-(a+1)*sum(log(samp))-sum((b/samp)^a))
+}
+invweibull.emv41<-function(a,b) -sum(log(dinvweibull(samp,sh=a,sc=b)))
+
+# distribuição Gamma inversa
+library(actuar)
+invgamma.emv<-function(x,samp){
+  n<-length(samp)
+  c(n*log(x[2])-n*digamma(x[1])+sum(log(samp)),n*x[1]/x[2]-sum(1/samp))
+}
+invgamma.emv4<-function(a,b){
+  n<-length(samp)
+  -(n*a*log(b)-n*log(gamma(a))-(a+1)*sum(log(samp))-sum(1/samp)*b)
+}
+invgamma.emv41<-function(a,b) -sum(log(dinvgamma(samp,sh=a,sc=b)))
+
+#############################################################
+# Apólice 1
+# histograma
+hist(y1, freq=F, main="Histograma de Y1")
+lines(density(y1), col="blue", lwd=2)
+
+# função de distribuição empírica 
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+
+# método da máxima verosimilhança
+# LogNormal
+miu<-mean(log(y1))
+sigma2<-mean((log(y1)-miu)^2)
+
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+lines(seq(0.4,1.7,0.1), plnorm(seq(0.4,1.7,0.1), meanlog=miu, sdlog=sigma2), col="green", lwd=2)
+
+# Gamma
+samp<-y1
+look.for.max(5,20,0.01,0.15,gamma.emv4)
+mle(gamma.emv41, start = list(a = 10, b = 0.01), lower = list(a = 10, b = 0.01), upper = list(a = 20, b = 0.15))
+
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+lines(seq(0.4,1.7,0.1), pgamma(seq(0.4,1.7,0.1), shape=15.51480321, scale=0.05172029), col="red", lwd=2)
+
+# Weibull 
+samp<-y1
+look.for.max(3.5,4,0.8,1,weibull.emv4)
+mle(weibull.emv41, start = list(a = 3.5, b = 0.8), lower = list(a = 3.5, b = 0.8), upper = list(a = 4, b = 1))
+
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+lines(seq(0.4,1.7,0.1), pweibull(seq(0.4,1.7,0.1), shape=3.7208823, scale=0.8832828), col="blue", lwd=2)
+
+# goodness of fit tests
+library(ADGofTest)
+ad.test(y1,pgamma,shape=15.51480321, scale=0.05172029)
+ad.test(y1,pweibull,shape=3.7208823, scale=0.8832828)
+ks.test(y1,pgamma,shape=15.51480321, scale=0.05172029)
+ks.test(y1,pweibull,shape=3.7208823, scale=0.8832828)
+
+# Gamma inversa
+samp<-y1
+look.for.max(5,40,5,30,invgamma.emv4)
+mle(invgamma.emv41, start = list(a = 5, b = 5), lower = list(a = 5, b = 5), upper = list(a = 40, b = 30))
+
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+lines(seq(0.4,1.7,0.1), pinvgamma(seq(0.4,1.7,0.1), shape=16.41887, scale=12.36647), col="red", lwd=2)
+
+# Weibull inversa 
+samp<-y1
+look.for.max(2,8,0.2,1,invweibull.emv4)
+mle(invweibull.emv41, start = list(a = 2, b = 0.2), lower = list(a = 2, b = 0.2), upper = list(a = 8, b = 1))
+
+plot.ecdf(y1, main="Função de distribuição empírica de Y1")
+lines(seq(0.4,1.7,0.1), pinvweibull(seq(0.4,1.7,0.1), shape=4.2958066, scale=0.6873333), col="blue", lwd=2)
+
+# goodness of fit tests
+library(ADGofTest)
+ad.test(y1,pinvgamma,shape=16.41887, scale=12.36647)
+ks.test(y1,pinvgamma,shape=16.41887, scale=12.36647)
+
+
+#############################################################
+# Apólice 2
+# histograma
+hist(y2, freq=F, main="Histograma de Y2")
+lines(density(y2), col="blue", lwd=2)
+
+# função de distribuição empírica 
+plot.ecdf(y2, main="Função de distribuição empírica de Y2")
+
+# método da máxima verosimilhança
+# LogNormal
+miu<-mean(log(y2))
+sigma2<-mean((log(y2)-miu)^2)
+
+plot.ecdf(y2, main="Função de distribuição empírica de Y2")
+lines(seq(100,350,1), plnorm(seq(100,350,1), meanlog=miu, sdlog=sigma2), col="green", lwd=2)
+
+# Gamma
+samp<-y2
+look.for.max(20,30,7,10,gamma.emv4)
+mle(gamma.emv41, start = list(a = 20, b = 7), lower = list(a = 20, b = 7), upper = list(a = 30, b = 10))
+
+plot.ecdf(y2, main="Função de distribuição empírica de Y2")
+lines(seq(100,350,1), pgamma(seq(100,350,1), shape=24.686715, scale=8.086131), col="red", lwd=2)
+
+# Weibull 
+samp<-y2
+look.for.max(4.5,5.5,210,225,weibull.emv4)
+mle(weibull.emv41, start = list(a = 4.5, b = 210), lower = list(a = 4.5, b = 210), upper = list(a = 5.5, b = 225))
+
+plot.ecdf(y2, main="Função de distribuição empírica de Y2")
+lines(seq(100,350,1), pweibull(seq(100,350,1), shape=5.130443, scale=216.163986), col="blue", lwd=2)
+
+# goodness of fit tests
+library(ADGofTest)
+ad.test(y2,pgamma,shape=24.686715, scale=8.086131)
+ad.test(y2,pweibull,shape=5.130443, scale=216.163986)
+ks.test(y2,pgamma,shape=24.686715, scale=8.086131)
+ks.test(y2,pweibull,shape=5.130443, scale=216.163986)
+
+
+
